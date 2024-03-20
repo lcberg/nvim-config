@@ -167,6 +167,12 @@ vim.opt.scrolloff = 10
 vim.opt.hlsearch = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
+vim.diagnostic.config {
+  underline = true,
+  virtual_text = true,
+  signs = false,
+  severity_sort = false,
+}
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
@@ -572,8 +578,44 @@ require('lazy').setup({
             },
           },
         },
+        volar = {},
+        tsserver = {},
+        -- volar = {
+        --   filetypes = { 'typescript', 'vue', 'javascript' },
+        -- },
+        -- tsserver = {
+        --   init_options = {
+        --     plugins = {
+        --       {
+        --         name = '@vue/typescript-plugin',
+        --         location = 'alskdj',
+        --         languages = { 'javascript', 'typescript', 'vue' },
+        --       },
+        --     },
+        --   },
+        --   filetypes = {
+        --     'javascript',
+        --     'typescript',
+        --     'vue',
+        --   },
+        -- },
+        -- tsserver = {
+        --   init_options = {
+        --     plugins = {
+        --       {
+        --         name = '@vue/typescript-plugin',
+        --         location = 'anything',
+        --         languages = { 'javascript', 'typescript', 'vue' },
+        --       },
+        --     },
+        --   },
+        --   filetypes = {
+        --     'javascript',
+        --     'typescript',
+        --     'vue',
+        --   },
+        -- },
       }
-
       -- Ensure the servers and tools above are installed
       --  To check the current status of installed tools and/or manually install
       --  other tools, you can run
@@ -602,6 +644,26 @@ require('lazy').setup({
           end,
         },
       }
+
+      local mason_registry = require 'mason-registry'
+      local has_volar, volar = pcall(mason_registry.get_package, 'vue-language-server')
+
+      local vue_ts_plugin_path = volar:get_install_path() .. 'node_modules/@vue/language-server/node_modules/@vue/typescript-plugin'
+      -- fater volar 2.0.7 use this local vue_ts_plugin_path = mason_registry.get_package('vue-language-server'):get_install_path() .. '/typescript-plugin'
+
+      require('lspconfig').tsserver.setup {
+        init_options = {
+          plugins = {
+            {
+              name = '@vue/typescript-plugin',
+              location = vue_ts_plugin_path,
+              -- If .vue file cannot be recognized in either js or ts file try to add `typescript` and `javascript` in languages table.
+              languages = { 'vue' },
+            },
+          },
+        },
+        filetypes = { 'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue' },
+      }
     end,
   },
 
@@ -613,7 +675,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true, cpp = true, vue = true }
         return {
           timeout_ms = 500,
           lsp_fallback = not disable_filetypes[vim.bo[bufnr].filetype],
@@ -699,7 +761,8 @@ require('lazy').setup({
           --  This will auto-import if your LSP supports it.
           --  This will expand snippets if the LSP sent a snippet.
           ['<C-y>'] = cmp.mapping.confirm { select = true },
-          ['C-z'] = cmp.mapping.confirm { select = true },
+          ['<C-z>'] = cmp.mapping.confirm { select = true },
+          ['<CR>'] = cmp.mapping.confirm { selct = true },
 
           -- Manually trigger a completion from nvim-cmp.
           --  Generally you don't need this, because nvim-cmp will display
@@ -734,6 +797,25 @@ require('lazy').setup({
           { name = 'path' },
         },
       }
+    end,
+  },
+  {
+    'ray-x/lsp_signature.nvim',
+    event = 'VeryLazy',
+    opts = {},
+    config = function(_, opts)
+      opts.bind = true
+      opts.handler_opts = {
+        border = 'single',
+      }
+      require('lsp_signature').setup(opts)
+      vim.keymap.set({ 'n', 'i' }, '<C-k>', function()
+        require('lsp_signature').toggle_float_win()
+      end, { silent = true, noremap = true, desc = 'toggle signature' })
+
+      vim.keymap.set({ 'n' }, '<Leader>k', function()
+        vim.lsp.buf.signature_help()
+      end, { silent = true, noremap = true, desc = 'toggle signature' })
     end,
   },
   {
