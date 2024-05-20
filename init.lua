@@ -1,10 +1,9 @@
---  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 vim.opt.termguicolors = true
 
 -- Set to true if you have a Nerd Font installed
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -29,8 +28,8 @@ vim.opt.showmode = false
 vim.opt.clipboard = 'unnamedplus'
 
 -- Enable break indent
+vim.opt.wrap = false
 vim.opt.breakindent = true
-vim.opt.wrap = true
 vim.opt.showbreak = string.rep(' ', 3) -- make it so long lines wrap smartly
 vim.keymap.set('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
 vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
@@ -72,7 +71,7 @@ vim.opt.numberwidth = 6
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 10
 
--- [[ Basic Keymaps ]]
+-- [[ Basic Keymaps ]+
 --  See `:help vim.keymap.set()`
 
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
@@ -82,12 +81,12 @@ vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.diagnostic.config {
   underline = true,
   virtual_text = true,
-  signs = false,
+  signs = true,
   severity_sort = false,
 }
 -- Diagnostic keymaps
-vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
-vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
+vim.keymap.set('n', 'üd', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
+vim.keymap.set('n', '+d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
@@ -490,43 +489,8 @@ require('lazy').setup({
             },
           },
         },
-        volar = {},
         tsserver = {},
-        -- volar = {
-        --   filetypes = { 'typescript', 'vue', 'javascript' },
-        -- },
-        -- tsserver = {
-        --   init_options = {
-        --     plugins = {
-        --       {
-        --         name = '@vue/typescript-plugin',
-        --         location = 'alskdj',
-        --         languages = { 'javascript', 'typescript', 'vue' },
-        --       },
-        --     },
-        --   },
-        --   filetypes = {
-        --     'javascript',
-        --     'typescript',
-        --     'vue',
-        --   },
-        -- },
-        -- tsserver = {
-        --   init_options = {
-        --     plugins = {
-        --       {
-        --         name = '@vue/typescript-plugin',
-        --         location = 'anything',
-        --         languages = { 'javascript', 'typescript', 'vue' },
-        --       },
-        --     },
-        --   },
-        --   filetypes = {
-        --     'javascript',
-        --     'typescript',
-        --     'vue',
-        --   },
-        -- },
+        volar = {},
       }
       -- Ensure the servers and tools above are installed
       --  To check the current status of installed tools and/or manually install
@@ -554,31 +518,68 @@ require('lazy').setup({
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
+          ['tsserver'] = function()
+            local vue_typescript_plugin = require('mason-registry').get_package('vue-language-server'):get_install_path()
+              .. '/node_modules/@vue/language-server'
+              .. '/node_modules/@vue/typescript-plugin'
+
+            require('lspconfig').tsserver.setup {
+              init_options = {
+                plugins = {
+                  {
+                    name = '@vue/typescript-plugin',
+                    location = vue_typescript_plugin,
+                    languages = { 'javascript', 'typescript', 'vue' },
+                  },
+                },
+              },
+              filetypes = {
+                'javascript',
+                'javascriptreact',
+                'javascript.jsx',
+                'typescript',
+                'typescriptreact',
+                'typescript.tsx',
+                'vue',
+              },
+            }
+          end,
+          ['rust_analyzer'] = function() end,
         },
-      }
-
-      local mason_registry = require 'mason-registry'
-      local has_volar, volar = pcall(mason_registry.get_package, 'vue-language-server')
-
-      local vue_ts_plugin_path = volar:get_install_path() .. 'node_modules/@vue/language-server/node_modules/@vue/typescript-plugin'
-      -- fater volar 2.0.7 use this local vue_ts_plugin_path = mason_registry.get_package('vue-language-server'):get_install_path() .. '/typescript-plugin'
-
-      require('lspconfig').tsserver.setup {
-        init_options = {
-          plugins = {
-            {
-              name = '@vue/typescript-plugin',
-              location = vue_ts_plugin_path,
-              -- If .vue file cannot be recognized in either js or ts file try to add `typescript` and `javascript` in languages table.
-              languages = { 'vue' },
-            },
-          },
-        },
-        filetypes = { 'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue' },
       }
     end,
   },
-
+  {
+    'mrcjkb/rustaceanvim',
+    version = '^4', -- Recommended
+    lazy = false, -- This plugin is already lazy
+  },
+  {
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
+      'MunifTanjim/nui.nvim',
+      -- "3rd/image.nvim", -- Optional image support in preview window: See `# Preview Mode` for more information
+    },
+    config = function()
+      require('neo-tree').setup {
+        close_if_last_window = true,
+        window = {
+          position = 'left',
+          width = 35,
+        },
+        filesystem = {
+          filtered_items = {
+            visible = true,
+            hide_dotfiles = false,
+            hide_gitignored = false,
+          },
+        },
+      }
+    end,
+  },
   { -- Autoformat
     'stevearc/conform.nvim',
     opts = {
@@ -587,7 +588,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true, vue = true }
+        local disable_filetypes = { c = true, cpp = true }
         return {
           timeout_ms = 500,
           lsp_fallback = not disable_filetypes[vim.bo[bufnr].filetype],
@@ -856,6 +857,14 @@ require('lazy').setup({
       --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
       --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+    end,
+  },
+  {
+    'iamcco/markdown-preview.nvim',
+    cmd = { 'MarkdownPreviewToggle', 'MarkdownPreview', 'MarkdownPreviewStop' },
+    ft = { 'markdown' },
+    build = function()
+      vim.fn['mkdp#util#install']()
     end,
   },
 
